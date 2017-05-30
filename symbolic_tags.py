@@ -28,19 +28,38 @@ class SymbolicTags(GObject.GObject, Nautilus.MenuProvider):
 
     def select_tag(self, widget, event, data=None):
         icon = Gtk.IconTheme.get_default().load_icon('gtk-file', 48, 0)
-        self.fileList.append([icon, 'foo', 'bar'])
+        (treeModel, selectedPaths) =  widget.get_selection().get_selected_rows()
+        self.fileList.clear()
+
+        taggedFiles = {}
+        selectedTags = []
+
+        for treePath in selectedPaths:
+            tag = treeModel.get_value(treeModel.get_iter(treePath), 0)
+            tagDir = os.path.join(self.tagsDir, tag)
+            for fileName in os.listdir(tagDir):
+                if os.path.isfile(os.path.join(tagDir, fileName)):
+                    if fileName in taggedFiles:
+			taggedFiles[fileName] += [tag]
+                    else:
+                        taggedFiles[fileName] = [tag]
+            selectedTags += [tag]
+
+        for fileName, tagList in taggedFiles.iteritems():
+            if len(tagList) == len(selectedTags):
+                self.fileList.append([icon, fileName, fileName])
 
     def filter_by_tags(self, menuItem, file):
 
-        tagsDir = os.path.join(urllib.unquote(file.get_uri()[7:]), '.symtags')
+        self.tagsDir = os.path.join(urllib.unquote(file.get_uri()[7:]), '.symtags')
 
         try:
-            os.makedirs(tagsDir)
+            os.makedirs(self.tagsDir)
         except OSError:
-            if not os.path.isdir(tagsDir):
+            if not os.path.isdir(self.tagsDir):
                 raise
 
-        tags = [tag for tag in os.listdir(tagsDir) if os.path.isdir(os.path.join(tagsDir, tag))]
+        tags = [tag for tag in os.listdir(self.tagsDir) if os.path.isdir(os.path.join(self.tagsDir, tag))]
         tags.sort()
 
         treeTags = Gtk.ListStore(str)
